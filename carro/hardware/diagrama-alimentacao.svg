@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" font-family="Helvetica, Arial, sans-serif">
+  <rect width="900" height="620" fill="#ffffff"/>
+  <text x="450" y="40" font-size="24" font-weight="bold" text-anchor="middle" fill="#111">Diagrama de Alimentacao</text>
+  <text x="450" y="65" font-size="14" text-anchor="middle" fill="#555">Bateria LiPo 2S 7.4V - duas ramificacoes de tensao</text>
+
+  <!-- Battery -->
+  <rect x="370" y="100" width="160" height="80" rx="8" fill="#27ae60" stroke="#333" stroke-width="2"/>
+  <text x="450" y="135" font-size="15" font-weight="bold" text-anchor="middle" fill="#fff">Bateria LiPo</text>
+  <text x="450" y="155" font-size="12" text-anchor="middle" fill="#fff">2S 7.4V 1000-1500mAh</text>
+
+  <!-- Split lines -->
+  <line x1="450" y1="180" x2="450" y2="220" stroke="#333" stroke-width="3"/>
+  <line x1="220" y1="220" x2="680" y2="220" stroke="#333" stroke-width="3"/>
+  <line x1="220" y1="220" x2="220" y2="260" stroke="#333" stroke-width="3"/>
+  <line x1="680" y1="220" x2="680" y2="260" stroke="#333" stroke-width="3"/>
+
+  <!-- Branch 1: direct 7.4V to driver/motor -->
+  <rect x="100" y="260" width="240" height="90" rx="8" fill="#8e44ad" stroke="#333" stroke-width="2"/>
+  <text x="220" y="292" font-size="14" font-weight="bold" text-anchor="middle" fill="#fff">7.4V direto</text>
+  <text x="220" y="312" font-size="12" text-anchor="middle" fill="#fff">Driver TB6612FNG (VM)</text>
+  <text x="220" y="330" font-size="12" text-anchor="middle" fill="#fff">alimenta o Motor DC</text>
+
+  <!-- Branch 2: through step-down to 5V rail -->
+  <rect x="560" y="260" width="240" height="90" rx="8" fill="#2980b9" stroke="#333" stroke-width="2"/>
+  <text x="680" y="292" font-size="14" font-weight="bold" text-anchor="middle" fill="#fff">7.4V - Step-down LM2596</text>
+  <text x="680" y="312" font-size="12" text-anchor="middle" fill="#fff">Saida regulada 5V</text>
+
+  <line x1="680" y1="350" x2="680" y2="390" stroke="#2980b9" stroke-width="3"/>
+  <line x1="480" y1="390" x2="880" y2="390" stroke="#2980b9" stroke-width="3"/>
+  <line x1="500" y1="390" x2="500" y2="430" stroke="#2980b9" stroke-width="3"/>
+  <line x1="680" y1="390" x2="680" y2="430" stroke="#2980b9" stroke-width="3"/>
+  <line x1="860" y1="390" x2="860" y2="430" stroke="#2980b9" stroke-width="3"/>
+
+  <!-- 5V consumers -->
+  <rect x="400" y="430" width="200" height="70" rx="8" fill="#3498db" stroke="#333" stroke-width="2"/>
+  <text x="500" y="460" font-size="13" font-weight="bold" text-anchor="middle" fill="#fff">ESP32 (5V/VIN)</text>
+  <text x="500" y="480" font-size="11" text-anchor="middle" fill="#fff">logica + Bluetooth</text>
+
+  <rect x="590" y="430" width="180" height="70" rx="8" fill="#3498db" stroke="#333" stroke-width="2"/>
+  <text x="680" y="460" font-size="13" font-weight="bold" text-anchor="middle" fill="#fff">Servo SG90</text>
+  <text x="680" y="480" font-size="11" text-anchor="middle" fill="#fff">alimentacao 5V</text>
+
+  <rect x="760" y="430" width="180" height="70" rx="8" fill="#3498db" stroke="#333" stroke-width="2"/>
+  <text x="850" y="460" font-size="13" font-weight="bold" text-anchor="middle" fill="#fff">Sensor HC-SR04</text>
+  <text x="850" y="480" font-size="11" text-anchor="middle" fill="#fff">alimentacao 5V</text>
+
+  <!-- Note box -->
+  <rect x="60" y="530" width="780" height="70" rx="6" fill="#f7f7f7" stroke="#ccc"/>
+  <text x="80" y="555" font-size="12" font-weight="bold" fill="#333">Por que LiPo 2S (litio) e nao pilha AA ou bateria 9V:</text>
+  <text x="80" y="575" font-size="11" fill="#333">Pilha AA (1.5V) exigiria 5-6 unidades em serie e perde tensao sob carga; bateria 9V tem corrente de pico baixa</text>
+  <text x="80" y="590" font-size="11" fill="#333">(nao sustenta o motor arrancando). LiPo 2S entrega 7.4V estaveis com alta corrente de pico (25C+), leve e recarregavel.</text>
+</svg>
