@@ -1,4 +1,10 @@
 # Organização do Projeto — Réplica RC Relâmpago McQueen (V0.3)
+
+Fabrício Gutierrez Saavedra - RM97631
+Márcio Gastaldi - RM98811
+Arthur Bessa Pian - RM99215
+Davi Desenzi - RM550849
+João Victor - RM551410
 ---
 
 ## 1. MVP (Produto Mínimo Viável)
