@@ -41,15 +41,14 @@ O firmware roda inteiro na placa **ESP32-CAM** e faz três coisas ao mesmo tempo
  
 **3) Sensor de ré (adição nossa).** Um HC-SR04 foi ligado nos pinos `U0T`/`U0R` da ESP32-CAM (os únicos GPIOs livres nessa placa, já que câmera e motores ocupam quase todos os outros). A lógica funciona como um "radar de ré": o sensor só liga quando o carrinho está de fato indo pra trás (lendo os pinos do driver). Se detectar um obstáculo a 20 cm ou menos, chama `robot_stop()` e trava o movimento na hora, sobrepondo o comando do celular — a frente do carrinho fica livre o tempo todo, sem nenhuma interferência do sensor.
  
-Código completo comentado: [`src/CameraWebServer.ino`](src/CameraWebServer.ino).
+Código completo comentado: (src/CameraWebServer.ino).
  
 > **Nota:** as funções `robot_setup()`, `robot_stop()` e `startCameraServer()` ficam em outras abas do sketch, fornecidas prontas pelo tutorial do kit LAFVIN (controle de motor e servidor de câmera/streaming). Elas não foram alteradas — o que adicionamos foi só a parte do sensor de ré.
  
 ## Carroceria 3D
  
 Desenhamos uma carroceria própria (estilo buggy de corrida, design original — não é uma réplica do personagem licenciado, já que isso é protegido por direitos autorais) para encaixar por cima do chassi acrílico do kit. Ela é impressa em 2 peças (frente + traseira) que se encaixam com uma espiga/soquete e são coladas.
- 
-![Preview da carroceria](assets/05_carroceria_3d_preview.png)
+
  
 Arquivos: pasta [`3d-model/`](3d-model/) (STL das duas peças + script Python parametrizado usado para gerar/ajustar o modelo).
  
@@ -74,13 +73,6 @@ Arquivos: pasta [`3d-model/`](3d-model/) (STL das duas peças + script Python pa
 > Preencher com testes adicionais conforme forem feitos (alcance real do WiFi, autonomia da bateria, ajuste da distância mínima de segurança, testes com a carroceria nova montada, etc.).
  
 ## Evidências finais
- 
-**Fotos do carrinho:**
- 
-| | |
-|---|---|
-| ![Chassi (vista inferior)](assets/01_chassi_vista_inferior.jpg) | ![Lateral com eletrônica](assets/02_robo_lateral_eletronica.jpg) |
-| ![Frontal com ESP32-CAM](assets/03_robo_frontal_esp32cam.jpg) | ![Traseira com antena e sensor](assets/04_robo_traseira_sensor.jpg) |
  
 **Vídeo do funcionamento:** **
  
