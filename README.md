@@ -7,104 +7,83 @@ Davi Desenzi - RM550849
 João Victor - RM551410
 ---
 
-## 1. MVP (Produto Mínimo Viável)
-
-### Minimamente funcional (MVP)
-O projeto é considerado **minimamente funcional** quando:
-- Chassi do kit está montado (4 motores, rodas, L298N, suporte de pilhas)
-- ESP32-CAM está programado e conecta via Bluetooth
-- O carro responde aos comandos básicos: `F` (frente), `R` (ré), `L` (esquerda), `D` (direita), `S` (parar)
-- O carro anda e faz curva (diferencial entre os lados)
-
-> Neste ponto o carro já é um carrinho-robô funcional, mesmo sem sensor de ré e sem a carenagem do Relâmpago McQueen.
-
-### Concluído (versão final)
-O projeto é considerado **concluído** quando, além do MVP:
-- O sensor de ré (HC-SR04) está integrado e funcionando (detecta obstáculo ao dar ré)
-- A carenagem do Relâmpago McQueen está impressa em 3D e encaixada no chassi
-- A fiação está organizada com abraçadeiras
-- Toda a documentação técnica está publicada no GitHub (ficha de requisitos, diagramas, croqui, tabela dimensional, custos)
-
----
-
-## 2. MoSCoW
-
-### Must have (essencial)
-- Chassi montado com os 4 motores funcionando
-- ESP32-CAM programado com controle Bluetooth básico (F/R/L/D/S)
-- Carro anda para frente, dá ré e vira para os dois lados
-- Alimentação por pilhas funcionando
-
-### Should have (importante, mas não bloqueia o MVP)
-- Sensor de ré (HC-SR04) funcional
-- Fiação organizada com abraçadeiras
-- Documentação técnica completa no GitHub
-
-### Could have (desejável, se sobrar tempo)
-- Carenagem 3D do Relâmpago McQueen impressa e encaixada
-- Streaming de vídeo da câmera do ESP32-CAM
-- App de controle com interface gráfica (em vez de comandos soltos)
-
-### Won't have (fora do escopo desta versão)
-- Direção Ackermann com servo (abandonada ao trocar para o kit com direção diferencial)
-- Navegação autônoma / desvio automático de obstáculo (o sensor de ré apenas informa distância, não toma decisão sozinho)
-- GPS ou qualquer forma de localização
-
----
-
-## 3. Backlog
-
-| # | Tarefa | Responsável | Categoria |
-|---|---|---|---|
-| 1 | Comprar componentes (kit, FTDI, sensor, resistores, filamento, pilhas) | Integrante 1 | Compras |
-| 2 | Montar chassi mecânico (motores, rodas, chassi acrílico) | Integrante 2 | Hardware |
-| 3 | Instalar L298N e fazer a fiação de potência | Integrante 2 | Hardware |
-| 4 | Configurar Arduino IDE para ESP32-CAM (placa + driver FTDI) | Integrante 3 | Firmware |
-| 5 | Programar firmware base: controle diferencial via Bluetooth (F/R/L/D/S) | Integrante 3 | Firmware |
-| 6 | Testar movimento básico (frente/ré/curvas) — **marco do MVP** | Integrante 1 e 2 | Testes |
-| 7 | Integrar sensor de ré (HC-SR04) ao firmware | Integrante 4 | Firmware |
-| 8 | Testar sensor de ré (detecção de obstáculo) | Integrante 4 | Testes |
-| 9 | Modelar carenagem 3D do Relâmpago McQueen | Integrante 3 | Design |
-| 10 | Imprimir e encaixar a carenagem no chassi | Integrante 2 | Hardware |
-| 11 | Organizar fiação com abraçadeiras | Integrante 1 | Hardware |
-| 12 | Escrever/atualizar documentação técnica no GitHub | Todos | Documentação |
-| 13 | Preencher planilha de custos com valores finais de compra | Integrante 1 | Documentação |
-| 14 | Testes finais e ajustes gerais — **marco de conclusão** | Todos | Testes |
-| 15 | (Opcional) Configurar streaming de vídeo da câmera | Integrante 4 | Firmware (bônus) |
-
----
-
-## 4. Dependências
-
-| Tarefa | Depende de |
+## Sumário
+ 
+- [Hardware usado](#hardware-usado)
+- [Como o programa funciona](#como-o-programa-funciona)
+- [Carroceria 3D](#carroceria-3d)
+- [Como usar](#como-usar)
+- [Testes e resultados](#testes-e-resultados)
+- [Evidências finais](#evidências-finais)
+- [Estrutura do repositório](#estrutura-do-repositório)
+## Hardware usado
+ 
+- **Kit base:** [LAFVIN 4WD Smart Robot Car Kit ESP32-CAM, WiFi](https://a.aliexpress.com/_mM8Qqan) — chassi acrílico 4WD, 4 motores TT + driver L298N, placa ESP32-CAM, suporte para pilhas.
+- **Sensor ultrassônico HC-SR04** — comprado separadamente, não vem no kit. Usado como sensor de ré.
+- **Impressora 3D:** Bambu Lab A1 — usada para imprimir a carroceria própria do carrinho.
+Medidas reais do chassi (usadas para desenhar a carroceria):
+ 
+| Medida | Valor |
 |---|---|
-| 3 (fiação de potência) | 2 (chassi montado) |
-| 5 (firmware base) | 4 (ambiente configurado) |
-| 6 (teste de movimento) | 3 e 5 |
-| 7 (integrar sensor) | 5 (firmware base já funcionando) |
-| 8 (testar sensor) | 7 |
-| 10 (imprimir/encaixar carenagem) | 9 (modelo pronto) e 2 (chassi montado, para saber medidas de encaixe) |
-| 11 (organizar fiação) | 6 (só organiza depois de validar que funciona) |
-| 14 (testes finais) | 6, 8, 10, 11 |
-| 15 (streaming, opcional) | 6 |
-
----
-
-## 5. Kanban
-
-| Backlog | A Fazer | Em Andamento | Em Teste | Concluído |
+| Comprimento (frente-trás) | 152 mm |
+| Largura roda-a-roda (fora a fora) | 220 mm |
+| Diâmetro da roda | 65 mm |
+| Vão roda ↔ placa central (cada lado) | 10 mm |
+| Altura total até o topo da antena | 157 mm |
+ 
+## Como o programa funciona
+ 
+O firmware roda inteiro na placa **ESP32-CAM** e faz três coisas ao mesmo tempo:
+ 
+**1) Controle dos motores.** O ESP32 comanda o driver L298N, que aciona os 4 motores TT (tração 4WD). O comando de frente/ré/esquerda/direita chega pela página web de controle (parte pronta do kit LAFVIN — funções `robot_setup()` e `robot_stop()`), e o driver liga os pinos `IN1`–`IN4` de acordo com a direção desejada. O programa usa a leitura desses mesmos pinos (`IN2`/`IN4`) pra saber, em tempo real, se o carrinho está de fato dando ré — sem precisar de nenhuma variável extra de estado.
+ 
+**2) Comunicação sem fio.** O ESP32-CAM não se conecta a uma rede existente: ele **cria a própria rede WiFi** (modo Access Point, SSID `ESP32-CAM Robot`, sem senha). O celular ou notebook conecta direto nessa rede e abre o IP do robô no navegador, o que carrega a página de controle (setas de direção) junto com o vídeo da câmera ao vivo (stream MJPEG). Não depende de internet nem de roteador — funciona em qualquer lugar.
+ 
+**3) Sensor de ré (adição nossa).** Um HC-SR04 foi ligado nos pinos `U0T`/`U0R` da ESP32-CAM (os únicos GPIOs livres nessa placa, já que câmera e motores ocupam quase todos os outros). A lógica funciona como um "radar de ré": o sensor só liga quando o carrinho está de fato indo pra trás (lendo os pinos do driver). Se detectar um obstáculo a 20 cm ou menos, chama `robot_stop()` e trava o movimento na hora, sobrepondo o comando do celular — a frente do carrinho fica livre o tempo todo, sem nenhuma interferência do sensor.
+ 
+Código completo comentado: [`src/CameraWebServer.ino`](src/CameraWebServer.ino).
+ 
+> **Nota:** as funções `robot_setup()`, `robot_stop()` e `startCameraServer()` ficam em outras abas do sketch, fornecidas prontas pelo tutorial do kit LAFVIN (controle de motor e servidor de câmera/streaming). Elas não foram alteradas — o que adicionamos foi só a parte do sensor de ré.
+ 
+## Carroceria 3D
+ 
+Desenhamos uma carroceria própria (estilo buggy de corrida, design original — não é uma réplica do personagem licenciado, já que isso é protegido por direitos autorais) para encaixar por cima do chassi acrílico do kit. Ela é impressa em 2 peças (frente + traseira) que se encaixam com uma espiga/soquete e são coladas.
+ 
+![Preview da carroceria](assets/05_carroceria_3d_preview.png)
+ 
+Arquivos: pasta [`3d-model/`](3d-model/) (STL das duas peças + script Python parametrizado usado para gerar/ajustar o modelo).
+ 
+## Como usar
+ 
+1. Ligue o carrinho (pilhas/bateria conectadas).
+2. No celular ou notebook, conecte na rede WiFi **`ESP32-CAM Robot`** (sem senha).
+3. Abra o navegador no endereço IP mostrado no Monitor Serial ao ligar (também aparece na tela inicial da página de controle, geralmente `192.168.4.1`).
+4. A página carrega o vídeo ao vivo da câmera e as setas de direção — use-as para mover o carrinho.
+5. Ao dar ré perto de um obstáculo (≤ 20 cm), o carrinho trava sozinho, mesmo segurando o comando de ré — solte e ande pra frente pra liberar de novo.
+*(Adicionar aqui prints ou GIF da página de controle, se quiser deixar mais visual.)*
+ 
+## Testes e resultados
+ 
+| Data/Versão | Teste / mudança | Problema encontrado | Correção | Resultado |
 |---|---|---|---|---|
-| 9. Modelar carenagem 3D | 1. Comprar componentes | 2. Montar chassi mecânico | 6. Testar movimento básico | — |
-| 10. Imprimir/encaixar carenagem | 4. Configurar Arduino IDE | 5. Programar firmware base | 8. Testar sensor de ré | — |
-| 13. Preencher planilha de custos | 3. Instalar L298N + fiação | | | |
-| 15. Streaming de vídeo (opcional) | 7. Integrar sensor de ré | | | |
-| 14. Testes finais e ajustes | 11. Organizar fiação | | | |
-| | 12. Documentação no GitHub | | | |
-
-> Mover as tarefas entre colunas conforme o grupo avança. Sugestão: recriar este quadro como um GitHub Project (Kanban nativo do GitHub) para facilitar a atualização colaborativa.
-
----
-
-## 6. Planilha de custos
-
-Ver arquivo `planilha-custos.xlsx` — contém item, loja, link, preço unitário, quantidade e valor estimado total, com fórmulas (soma automática).
+| V0.1 | Primeira versão, controle via Bluetooth | — | — | Funcionava, mas trocamos por WiFi+câmera na V0.3 |
+| V0.2 | Adição do sensor de ré | — | — | Sensor detectando obstáculos na ré |
+| V0.3 | Troca para o kit LAFVIN 4WD + ESP32-CAM | Sensor ligado nos pinos `U0T`/`U0R`, que são os mesmos da Serial | Os caracteres enviados por `Serial.print()` geravam pulsos elétricos nesses pinos e atrapalhavam a leitura do `ECHO`, fazendo o sensor ler distância errada | Removemos todo `Serial.print()` de dentro do `loop()` enquanto o carrinho está em marcha à ré; sensor passou a ler de forma confiável |
+| V0.3 | Teste do radar de ré | Sensor podia travar o carrinho mesmo andando pra frente, se ligado o tempo todo | Sensor agora só é lido quando os pinos do driver indicam marcha à ré | Frente 100% livre, ré protegida |
+ 
+> Preencher com testes adicionais conforme forem feitos (alcance real do WiFi, autonomia da bateria, ajuste da distância mínima de segurança, testes com a carroceria nova montada, etc.).
+ 
+## Evidências finais
+ 
+**Fotos do carrinho:**
+ 
+| | |
+|---|---|
+| ![Chassi (vista inferior)](assets/01_chassi_vista_inferior.jpg) | ![Lateral com eletrônica](assets/02_robo_lateral_eletronica.jpg) |
+| ![Frontal com ESP32-CAM](assets/03_robo_frontal_esp32cam.jpg) | ![Traseira com antena e sensor](assets/04_robo_traseira_sensor.jpg) |
+ 
+**Vídeo do funcionamento:** **
+ 
+**Demonstração do controle remoto:** **
+ 
+**Demonstração do sensor:** **
