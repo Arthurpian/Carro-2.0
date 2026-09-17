@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="820" viewBox="0 0 900 820" font-family="Helvetica, Arial, sans-serif">
+  <rect width="900" height="820" fill="#ffffff"/>
+  <text x="450" y="40" font-size="24" font-weight="bold" text-anchor="middle" fill="#111">Diagrama de Blocos - Conexoes e Pinos</text>
+  <text x="450" y="65" font-size="14" text-anchor="middle" fill="#555">ESP32 + TB6612FNG + Servo + Sensor de Re (HC-SR04)</text>
+
+  <!-- ESP32 central block -->
+  <rect x="360" y="330" width="180" height="160" rx="8" fill="#2980b9" stroke="#333" stroke-width="2"/>
+  <text x="450" y="405" font-size="16" font-weight="bold" text-anchor="middle" fill="#fff">ESP32</text>
+  <text x="450" y="425" font-size="12" text-anchor="middle" fill="#fff">WROOM-32</text>
+  <text x="450" y="445" font-size="11" text-anchor="middle" fill="#fff">Bluetooth interno</text>
+  <text x="450" y="462" font-size="11" text-anchor="middle" fill="#fff">(sem pino fisico)</text>
+
+  <!-- Smartphone / App -->
+  <rect x="360" y="40" width="180" height="80" rx="8" fill="#16a085" stroke="#333" stroke-width="2"/>
+  <text x="450" y="75" font-size="14" font-weight="bold" text-anchor="middle" fill="#fff">App Celular/PC</text>
+  <text x="450" y="95" font-size="11" text-anchor="middle" fill="#fff">Comandos: F R L D S</text>
+  <line x1="450" y1="120" x2="450" y2="330" stroke="#16a085" stroke-width="3" stroke-dasharray="6,4"/>
+  <text x="470" y="230" font-size="11" fill="#16a085">Bluetooth (sem fio)</text>
+
+  <!-- TB6612FNG block (left) -->
+  <rect x="60" y="330" width="200" height="160" rx="8" fill="#8e44ad" stroke="#333" stroke-width="2"/>
+  <text x="160" y="365" font-size="15" font-weight="bold" text-anchor="middle" fill="#fff">Driver TB6612FNG</text>
+  <text x="160" y="390" font-size="11" text-anchor="middle" fill="#fff">AIN1 - GPIO 27</text>
+  <text x="160" y="408" font-size="11" text-anchor="middle" fill="#fff">AIN2 - GPIO 26</text>
+  <text x="160" y="426" font-size="11" text-anchor="middle" fill="#fff">PWMA - GPIO 25</text>
+  <text x="160" y="444" font-size="11" text-anchor="middle" fill="#fff">STBY - GPIO 33</text>
+  <text x="160" y="465" font-size="11" text-anchor="middle" fill="#fff">VM - Bateria 7.4V</text>
+  <line x1="360" y1="380" x2="260" y2="380" stroke="#8e44ad" stroke-width="3"/>
+  <line x1="360" y1="400" x2="260" y2="400" stroke="#8e44ad" stroke-width="3"/>
+  <line x1="360" y1="420" x2="260" y2="420" stroke="#8e44ad" stroke-width="3"/>
+  <line x1="360" y1="440" x2="260" y2="440" stroke="#8e44ad" stroke-width="3"/>
+
+  <!-- Motor -->
+  <rect x="60" y="560" width="200" height="70" rx="8" fill="#c0392b" stroke="#333" stroke-width="2"/>
+  <text x="160" y="590" font-size="14" font-weight="bold" text-anchor="middle" fill="#fff">Motor DC N20</text>
+  <text x="160" y="610" font-size="11" text-anchor="middle" fill="#fff">AO1 / AO2 (driver)</text>
+  <line x1="160" y1="490" x2="160" y2="560" stroke="#c0392b" stroke-width="3"/>
+
+  <!-- Servo block (right) -->
+  <rect x="640" y="330" width="200" height="120" rx="8" fill="#e67e22" stroke="#333" stroke-width="2"/>
+  <text x="740" y="365" font-size="15" font-weight="bold" text-anchor="middle" fill="#fff">Servo SG90</text>
+  <text x="740" y="390" font-size="11" text-anchor="middle" fill="#fff">Sinal PWM - GPIO 13</text>
+  <text x="740" y="408" font-size="11" text-anchor="middle" fill="#fff">VCC - 5V (regulado)</text>
+  <text x="740" y="426" font-size="11" text-anchor="middle" fill="#fff">GND - comum</text>
+  <line x1="640" y1="390" x2="540" y2="390" stroke="#e67e22" stroke-width="3"/>
+
+  <!-- Sensor block (bottom right) -->
+  <rect x="640" y="560" width="200" height="130" rx="8" fill="#27ae60" stroke="#333" stroke-width="2"/>
+  <text x="740" y="590" font-size="15" font-weight="bold" text-anchor="middle" fill="#fff">Sensor de Re</text>
+  <text x="740" y="608" font-size="11" text-anchor="middle" fill="#fff">HC-SR04 (ultrassonico)</text>
+  <text x="740" y="628" font-size="11" text-anchor="middle" fill="#fff">TRIG - GPIO 5</text>
+  <text x="740" y="646" font-size="11" text-anchor="middle" fill="#fff">ECHO - GPIO 18</text>
+  <text x="740" y="664" font-size="11" text-anchor="middle" fill="#fff">(via divisor 5V-3.3V)</text>
+  <line x1="740" y1="450" x2="740" y2="560" stroke="#27ae60" stroke-width="3"/>
+
+  <!-- Legend -->
+  <rect x="60" y="720" width="780" height="80" rx="6" fill="#f7f7f7" stroke="#ccc"/>
+  <text x="80" y="745" font-size="12" font-weight="bold" fill="#333">Legenda:</text>
+  <text x="80" y="765" font-size="11" fill="#333">- Sensor HC-SR04 opera em 5V; ECHO precisa de divisor resistivo (ex: 1k + 2k) antes do GPIO do ESP32 (3.3V max).</text>
+  <text x="80" y="783" font-size="11" fill="#333">- GND de todos os componentes deve ser comum (bateria, driver, ESP32, servo, sensor).</text>
+</svg>
