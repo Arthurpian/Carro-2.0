@@ -1,199 +1,225 @@
-/* ============================================================
-   Carrinho Bluetooth - ESP32 (BLE) + L298N + Dabble
-   com Sensor de Ré (HC-SR04)
-   Project-based Maker Lab
-   ------------------------------------------------------------
-   PINAGEM CONFORME O SLIDE:
-   L298N        ESP32
-   IN1  ......  GPIO 16
-   IN2  ......  GPIO 17
-   ENA  ......  GPIO 5    (Enable Motor A)
-   IN3  ......  GPIO 18
-   IN4  ......  GPIO 19
-   ENB  ......  GPIO 6    (Enable Motor B)  <-- ver AVISO abaixo
+/*
+ * ===================================================================
+ * Projeto: Carrinho RC "Relâmpago" — LAFVIN 4WD + ESP32-CAM
+ * Arquivo: CameraWebServer.ino  (aba principal do sketch)
+ * ===================================================================
+ *
+ * Este é o firmware que roda na placa ESP32-CAM do kit LAFVIN 4WD.
+ * Ele faz três coisas ao mesmo tempo:
+ *
+ *   1) Cria uma rede WiFi própria (Access Point) e sobe um servidor
+ *      web com o streaming da câmera + a página de controle remoto
+ *      (isso já vem pronto no exemplo do fabricante — funções
+ *      robot_setup(), robot_stop() e startCameraServer(), definidas
+ *      nas outras abas do sketch fornecidas pelo kit LAFVIN).
+ *
+ *   2) Controla os motores (frente/ré/esquerda/direita) a partir dos
+ *      comandos recebidos pela página web, via robot_setup()/robot_stop().
+ *
+ *   3) ADIÇÃO NOSSA: um sensor ultrassônico (HC-SR04) que funciona só
+ *      durante a marcha à ré, travando o carrinho automaticamente se
+ *      detectar um obstáculo a menos de 20 cm — como um "radar de ré".
+ *
+ * O código original de câmera/servidor é do fabricante (kit LAFVIN,
+ * baseado no exemplo "CameraWebServer" da Espressif). A lógica do
+ * sensor de ré (a partir da seção "SENSOR ULTRASSÔNICO" abaixo) foi
+ * adicionada por nós para o projeto.
+ * ===================================================================
+ */
 
-   ACRESCENTADO (não consta no slide):
-   HC-SR04 TRIG ...... GPIO 25
-   HC-SR04 ECHO ...... GPIO 26   (divisor 1k/2k: 5V -> 3.3V)
-   Buzzer ............ GPIO 27   (buzzer ATIVO)
-   ------------------------------------------------------------
-   AVISO SOBRE O GPIO 6:
-   No ESP32 os GPIOs 6 a 11 ligam-se à memória flash SPI interna.
-   Se a placa resetar em loop ou não iniciar, troque a linha
-   #define ENB 6  por  #define ENB 21  (ou 4 / 23) e mova o fio.
-   ============================================================ */
+#include "esp_camera.h"
+#include <WiFi.h>
 
-#include <DabbleESP32.h>
+// Modelo da placa de câmera (AI-Thinker é o modelo usado no kit LAFVIN)
+#define CAMERA_MODEL_AI_THINKER
 
-// ---------- Motores (pinagem do slide) ----------
-#define IN1 16
-#define IN2 17
-#define ENA 5
-#define IN3 18
-#define IN4 19
-#define ENB 6        // se a placa não bootar, use 21
+// Nome e senha da rede WiFi que o próprio robô cria (modo Access Point).
+// Sem senha ("") = rede aberta; o celular/notebook conecta direto nela.
+const char* ssid1 = "ESP32-CAM Robot";
+const char* password1 = "";
 
-// ---------- Sensor de ré ----------
-#define TRIG 25
-#define ECHO 26
-#define BUZZER 27
+// Funções de controle do robô, definidas nas outras abas do sketch
+// (vêm prontas do exemplo do fabricante LAFVIN — controlam os motores
+// e o servidor HTTP que recebe os comandos da página web de controle).
+extern void robot_stop();
+extern void robot_setup();
 
-// ---------- Parâmetros de segurança ----------
-const int DIST_PARADA = 20;   // cm -> para o carro
-const int DIST_ALERTA = 40;   // cm -> apenas apita
-const unsigned long INTERVALO_LEITURA = 60;   // ms
+// =====================================
+// SENSOR ULTRASSÔNICO (adição nossa) — radar de ré
+// =====================================
+// Sensor HC-SR04 comprado à parte (não vem no kit).
+// Ligado nos pinos U0T/U0R da ESP32-CAM (os mesmos usados pela
+// Serial), porque são os únicos GPIOs livres nessa placa depois que
+// a câmera e os motores já ocupam quase todos os outros.
+#define TRIG_PIN 1              // TRIG do sensor -> GPIO1 (U0T)
+#define ECHO_PIN 3              // ECHO do sensor -> GPIO3 (U0R)
+#define DISTANCIA_MINIMA_CM 20  // Distância de segurança para travar a ré
 
-// ---------- Estado ----------
-bool emRe = false;
-bool reBloqueada = false;
-bool buzzerLigado = false;
-long distancia = 999;
-unsigned long ultimaLeitura = 0;
-unsigned long ultimoBip = 0;
+// Pinos do driver de motor (L298N) que indicam quando as rodas
+// traseiras estão girando em marcha à ré. Usados para saber se o
+// carrinho ESTÁ dando ré agora, sem precisar de outra variável de
+// estado (lê direto o pino de saída do driver).
+#define IN2 13
+#define IN4 15
 
-// ============================================================
+// =====================================
+// Pinos da câmera (padrão da placa AI-Thinker / kit LAFVIN)
+// =====================================
+#define PWDN_GPIO_NUM     32
+#define RESET_GPIO_NUM    -1
+#define XCLK_GPIO_NUM      0
+#define SIOD_GPIO_NUM     26
+#define SIOC_GPIO_NUM     27
+#define Y9_GPIO_NUM       35
+#define Y8_GPIO_NUM       34
+#define Y7_GPIO_NUM       39
+#define Y6_GPIO_NUM       36
+#define Y5_GPIO_NUM       21
+#define Y4_GPIO_NUM       19
+#define Y3_GPIO_NUM       18
+#define Y2_GPIO_NUM        5
+#define VSYNC_GPIO_NUM    25
+#define HREF_GPIO_NUM     23
+#define PCLK_GPIO_NUM     22
+
+extern int gpLed = 4;        // LED/flash da câmera
+extern String WiFiAddr = ""; // guarda o IP do robô pra outras abas usarem
+
+void startCameraServer(); // definida em app_httpd (aba do fabricante)
+
+// =====================================
+// medirDistancia()
+// Dispara o pulso ultrassônico e devolve a distância em cm.
+// Se não detectar nada dentro do timeout, devolve 999 (bem longe).
+// =====================================
+long medirDistancia() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  // Timeout de 15ms: se não ouvir o eco nesse tempo, desiste e
+  // segue em frente (evita travar o loop do robô esperando o pino).
+  long duracao = pulseIn(ECHO_PIN, HIGH, 15000);
+
+  if (duracao == 0) return 999; // nada detectado -> "livre"
+
+  return duracao * 0.034 / 2; // fórmula padrão: distância = (tempo x vel. do som) / 2
+}
+
+// =====================================
+// setup()
+// =====================================
 void setup() {
   Serial.begin(115200);
+  Serial.setDebugOutput(true);
+  Serial.println();
 
-  pinMode(IN1, OUTPUT);
+  // Pinos do sensor de ré
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  // Pinos do driver, usados aqui só para LEITURA (checar se está
+  // em marcha à ré) — quem manda neles de verdade é robot_setup()/
+  // a lógica de motor do kit.
   pinMode(IN2, OUTPUT);
-  pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
-  pinMode(ENA, OUTPUT);
-  pinMode(ENB, OUTPUT);
 
-  pinMode(TRIG, OUTPUT);
-  pinMode(ECHO, INPUT);
-  pinMode(BUZZER, OUTPUT);
-  digitalWrite(BUZZER, LOW);
+  robot_setup(); // inicializa motores + servidor de controle (fabricante)
+  pinMode(gpLed, OUTPUT);
+  digitalWrite(gpLed, LOW);
 
-  digitalWrite(ENA, HIGH);   // motores habilitados
-  digitalWrite(ENB, HIGH);
-  stopMotors();
+  // --- Configuração da câmera (padrão do kit) ---
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk = XCLK_GPIO_NUM;
+  config.pin_pclk = PCLK_GPIO_NUM;
+  config.pin_vsync = VSYNC_GPIO_NUM;
+  config.pin_href = HREF_GPIO_NUM;
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
+  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_reset = RESET_GPIO_NUM;
+  config.xclk_freq_hz = 20000000;
+  config.pixel_format = PIXFORMAT_JPEG;
 
-  Dabble.begin("My Bluetooth Car");
-  Serial.println("Carrinho pronto.");
-}
-
-// ============================================================
-void loop() {
-  Dabble.processInput();
-
-  // 1) Comandos do GamePad (polling - compatível com todas as
-  //    versões da biblioteca Dabble)
-  if      (GamePad.isUpPressed())    moveForward();
-  else if (GamePad.isDownPressed())  moveBackward();
-  else if (GamePad.isLeftPressed())  turnLeft();
-  else if (GamePad.isRightPressed()) turnRight();
-  else                               parar();
-
-  // 2) Sensor de ré (não bloqueante)
-  if (millis() - ultimaLeitura >= INTERVALO_LEITURA) {
-    ultimaLeitura = millis();
-    distancia = lerDistancia();
-    verificarRe();
+  // Se a placa tiver PSRAM (é o caso da AI-Thinker), usa qualidade
+  // maior; senão cai pra uma resolução menor pra não faltar memória.
+  if (psramFound()) {
+    config.frame_size = FRAMESIZE_UXGA;
+    config.jpeg_quality = 10;
+    config.fb_count = 2;
+  } else {
+    config.frame_size = FRAMESIZE_SVGA;
+    config.jpeg_quality = 12;
+    config.fb_count = 1;
   }
-}
 
-// ============================================================
-//  SENSOR DE RÉ
-// ============================================================
-long lerDistancia() {
-  digitalWrite(TRIG, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG, LOW);
-
-  long duracao = pulseIn(ECHO, HIGH, 25000);   // timeout ~4 m
-  if (duracao == 0) return 999;                // nada detectado
-  return duracao * 0.034 / 2;                  // cm
-}
-
-void verificarRe() {
-  if (!emRe) {                          // só atua na marcha à ré
-    reBloqueada = false;
-    desligarBuzzer();
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK) {
+    Serial.printf("Camera init failed with error 0x%x", err);
     return;
   }
 
-  if (distancia <= DIST_PARADA) {       // PERIGO -> para o carro
-    stopMotors();
-    reBloqueada = true;
-    ligarBuzzer();                      // som contínuo
-    Serial.println("Obstaculo! Re bloqueada.");
-  }
-  else if (distancia <= DIST_ALERTA) {  // ATENÇÃO -> bip intermitente
-    reBloqueada = false;
-    if (millis() - ultimoBip >= 250) {
-      ultimoBip = millis();
-      buzzerLigado = !buzzerLigado;
-      digitalWrite(BUZZER, buzzerLigado);
+  sensor_t * s = esp_camera_sensor_get();
+  s->set_framesize(s, FRAMESIZE_QVGA); // resolução do streaming ao vivo
+  s->set_hmirror(s, 0);
+  s->set_vflip(s, 1); // imagem invertida verticalmente por causa do jeito que a câmera fica montada no chassi
+
+  // --- Sobe o Access Point (o robô vira o próprio roteador WiFi) ---
+  WiFi.softAP(ssid1, password1);
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
+
+  Serial.print("Camera Ready! Use 'http://");
+  Serial.print(WiFi.softAPIP());
+  WiFiAddr = WiFi.softAPIP().toString();
+  Serial.println("' to connect");
+
+  startCameraServer(); // sobe o servidor HTTP (stream + comandos de controle)
+  digitalWrite(33, LOW);
+}
+
+// =====================================
+// loop()
+// "Radar de ré": só ativa o sensor quando o carrinho está dando ré.
+// =====================================
+void loop() {
+  // 1) Verifica eletricamente (lendo os pinos do driver) se os
+  //    motores traseiros estão recebendo o comando de marcha à ré.
+  bool dandoRe = (digitalRead(IN2) == HIGH) || (digitalRead(IN4) == HIGH);
+
+  // 2) Só liga o sensor enquanto está dando ré — assim a frente do
+  //    carrinho fica 100% livre e o sensor não atrapalha em nada
+  //    quando ele está andando pra frente ou parado.
+  if (dandoRe) {
+    long distancia = medirDistancia();
+
+    // 3) Se detectar algo a 20cm ou menos, força a parada.
+    if (distancia > 0 && distancia <= DISTANCIA_MINIMA_CM) {
+      robot_stop(); // usa a função oficial de freio, sobrepõe o comando do celular
+
+      // IMPORTANTE: não colocar Serial.print() aqui dentro.
+      // PROBLEMA QUE ENCONTRAMOS: o sensor está ligado nos pinos
+      // U0T/U0R, que são os MESMOS pinos usados pela Serial. Cada
+      // caractere que a Serial manda gera pulsos elétricos nesses
+      // pinos e "cega"/atrapalha a leitura do ECHO do sensor,
+      // fazendo ele dar distância errada bem na hora de frear.
+      // CORREÇÃO: tiramos qualquer Serial.print() de dentro do
+      // loop principal quando o carrinho está em marcha à ré.
     }
   }
-  else {                                // caminho livre
-    reBloqueada = false;
-    desligarBuzzer();
-  }
-}
 
-void ligarBuzzer()   { buzzerLigado = true;  digitalWrite(BUZZER, HIGH); }
-void desligarBuzzer(){ buzzerLigado = false; digitalWrite(BUZZER, LOW);  }
-
-// ============================================================
-//  MOVIMENTOS
-// ============================================================
-void moveForward() {
-  emRe = false;
-  reBloqueada = false;
-  desligarBuzzer();
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
-}
-
-void moveBackward() {
-  emRe = true;
-
-  if (reBloqueada) {      // já detectou obstáculo -> não anda
-    stopMotors();
-    return;
-  }
-
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
-}
-
-void turnLeft() {
-  emRe = false;
-  desligarBuzzer();
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
-}
-
-void turnRight() {
-  emRe = false;
-  desligarBuzzer();
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
-}
-
-void parar() {
-  emRe = false;
-  desligarBuzzer();
-  stopMotors();
-}
-
-void stopMotors() {
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, LOW);
+  delay(30); // pequena pausa entre leituras (~33 verificações por segundo)
 }
