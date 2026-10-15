@@ -16,13 +16,15 @@ João Victor - RM551410
 - [Testes e resultados](#testes-e-resultados)
 - [Evidências finais](#evidências-finais)
 - [Estrutura do repositório](#estrutura-do-repositório)
+
 ## Hardware usado
- 
+
 - **Kit base:** [LAFVIN 4WD Smart Robot Car Kit ESP32-CAM, WiFi](https://a.aliexpress.com/_mM8Qqan) — chassi acrílico 4WD, 4 motores TT + driver L298N, placa ESP32-CAM, suporte para pilhas.
 - **Sensor ultrassônico HC-SR04** — comprado separadamente, não vem no kit. Usado como sensor de ré.
 - **Impressora 3D:** Bambu Lab A1 — usada para imprimir a carroceria própria do carrinho.
+
 Medidas reais do chassi (usadas para desenhar a carroceria):
- 
+
 | Medida | Valor |
 |---|---|
 | Comprimento (frente-trás) | 152 mm |
@@ -30,52 +32,117 @@ Medidas reais do chassi (usadas para desenhar a carroceria):
 | Diâmetro da roda | 65 mm |
 | Vão roda ↔ placa central (cada lado) | 10 mm |
 | Altura total até o topo da antena | 157 mm |
- 
+
 ## Como o programa funciona
- 
+
 O firmware roda inteiro na placa **ESP32-CAM** e faz três coisas ao mesmo tempo:
- 
+
 **1) Controle dos motores.** O ESP32 comanda o driver L298N, que aciona os 4 motores TT (tração 4WD). O comando de frente/ré/esquerda/direita chega pela página web de controle (parte pronta do kit LAFVIN — funções `robot_setup()` e `robot_stop()`), e o driver liga os pinos `IN1`–`IN4` de acordo com a direção desejada. O programa usa a leitura desses mesmos pinos (`IN2`/`IN4`) pra saber, em tempo real, se o carrinho está de fato dando ré — sem precisar de nenhuma variável extra de estado.
- 
+
 **2) Comunicação sem fio.** O ESP32-CAM não se conecta a uma rede existente: ele **cria a própria rede WiFi** (modo Access Point, SSID `ESP32-CAM Robot`, sem senha). O celular ou notebook conecta direto nessa rede e abre o IP do robô no navegador, o que carrega a página de controle (setas de direção) junto com o vídeo da câmera ao vivo (stream MJPEG). Não depende de internet nem de roteador — funciona em qualquer lugar.
- 
+
 **3) Sensor de ré (adição nossa).** Um HC-SR04 foi ligado nos pinos `U0T`/`U0R` da ESP32-CAM (os únicos GPIOs livres nessa placa, já que câmera e motores ocupam quase todos os outros). A lógica funciona como um "radar de ré": o sensor só liga quando o carrinho está de fato indo pra trás (lendo os pinos do driver). Se detectar um obstáculo a 20 cm ou menos, chama `robot_stop()` e trava o movimento na hora, sobrepondo o comando do celular — a frente do carrinho fica livre o tempo todo, sem nenhuma interferência do sensor.
- 
-Código completo comentado: (src/CameraWebServer.ino).
- 
+
+
 > **Nota:** as funções `robot_setup()`, `robot_stop()` e `startCameraServer()` ficam em outras abas do sketch, fornecidas prontas pelo tutorial do kit LAFVIN (controle de motor e servidor de câmera/streaming). Elas não foram alteradas — o que adicionamos foi só a parte do sensor de ré.
- 
+
 ## Carroceria 3D
- 
+
 Desenhamos uma carroceria própria (estilo buggy de corrida, design original — não é uma réplica do personagem licenciado, já que isso é protegido por direitos autorais) para encaixar por cima do chassi acrílico do kit. Ela é impressa em 2 peças (frente + traseira) que se encaixam com uma espiga/soquete e são coladas.
 
- 
-Arquivos: pasta [`3d-model/`](3d-model/) (STL das duas peças + script Python parametrizado usado para gerar/ajustar o modelo).
- 
 ## Como usar
- 
+
 1. Ligue o carrinho (pilhas/bateria conectadas).
 2. No celular ou notebook, conecte na rede WiFi **`ESP32-CAM Robot`** (sem senha).
 3. Abra o navegador no endereço IP mostrado no Monitor Serial ao ligar (também aparece na tela inicial da página de controle, geralmente `192.168.4.1`).
 4. A página carrega o vídeo ao vivo da câmera e as setas de direção — use-as para mover o carrinho.
 5. Ao dar ré perto de um obstáculo (≤ 20 cm), o carrinho trava sozinho, mesmo segurando o comando de ré — solte e ande pra frente pra liberar de novo.
+
 *(Adicionar aqui prints ou GIF da página de controle, se quiser deixar mais visual.)*
- 
+
 ## Testes e resultados
- 
+
 | Data/Versão | Teste / mudança | Problema encontrado | Correção | Resultado |
 |---|---|---|---|---|
 | V0.1 | Primeira versão, controle via Bluetooth | — | — | Funcionava, mas trocamos por WiFi+câmera na V0.3 |
 | V0.2 | Adição do sensor de ré | — | — | Sensor detectando obstáculos na ré |
 | V0.3 | Troca para o kit LAFVIN 4WD + ESP32-CAM | Sensor ligado nos pinos `U0T`/`U0R`, que são os mesmos da Serial | Os caracteres enviados por `Serial.print()` geravam pulsos elétricos nesses pinos e atrapalhavam a leitura do `ECHO`, fazendo o sensor ler distância errada | Removemos todo `Serial.print()` de dentro do `loop()` enquanto o carrinho está em marcha à ré; sensor passou a ler de forma confiável |
 | V0.3 | Teste do radar de ré | Sensor podia travar o carrinho mesmo andando pra frente, se ligado o tempo todo | Sensor agora só é lido quando os pinos do driver indicam marcha à ré | Frente 100% livre, ré protegida |
- 
+
 > Preencher com testes adicionais conforme forem feitos (alcance real do WiFi, autonomia da bateria, ajuste da distância mínima de segurança, testes com a carroceria nova montada, etc.).
- 
-## Evidências finais
- 
-**Vídeo do funcionamento:** **
- 
-**Demonstração do controle remoto:** **
- 
-**Demonstração do sensor:** **
+
+## CP2 — TinyML (Edge Impulse)
+
+Evolução do CP1: o mesmo sensor ultrassônico (HC-SR04) usado no radar de ré
+agora também alimenta um modelo de TinyML treinado no Edge Impulse, embarcado
+no próprio ESP32, que classifica a distância em três classes e muda o
+comportamento do carrinho em tempo real — não só durante a ré, mas também
+andando pra frente (diferente da lógica fixa de 20cm do CP1).
+
+**Fluxo:** Sensor → Coleta (CSV) → Edge Impulse → Treinamento → Inferência → Biblioteca Arduino → ESP32 → Ação no carrinho.
+
+| Classe | Faixa de distância | Ação no carrinho |
+|---|---|---|
+| `livre` | > 60 cm | Segue normal |
+| `atencao` | 20–60 cm | Reduz velocidade |
+| `perigo` | < 20 cm | Para (`robot_stop()`) |
+
+Toda a documentação do CP2 está na pasta [`cp2-tinyml/`](cp2-tinyml/):
+
+- **Dataset e coleta:** [`cp2-tinyml/dataset/README.md`](cp2-tinyml/dataset/README.md) — sensor, classes, formato do CSV, quantidade de amostras.
+- **Sketch de coleta:** [`cp2-tinyml/coleta_dados/coleta_dados.ino`](cp2-tinyml/coleta_dados/coleta_dados.ino).
+- **Processo no Edge Impulse:** [`cp2-tinyml/GUIA_EDGE_IMPULSE.md`](cp2-tinyml/GUIA_EDGE_IMPULSE.md) (passo a passo) + [`cp2-tinyml/evidencias_edge_impulse/`](cp2-tinyml/evidencias_edge_impulse/) (prints: acurácia, matriz de confusão, testes de inferência).
+- **Biblioteca exportada:** [`cp2-tinyml/modelo_exportado/`](cp2-tinyml/modelo_exportado/) (.zip gerado pelo Edge Impulse).
+- **Inferência no ESP32:** [`cp2-tinyml/esp32_inferencia/esp32_inferencia.ino`](cp2-tinyml/esp32_inferencia/esp32_inferencia.ino) (integrado depois ao `src/CameraWebServer/CameraWebServer.ino`).
+
+**Dataset coletado:** 35 capturas limpas no total — `livre`: 5, `atencao`: 5,
+`perigo`: 25 (ver detalhes em [`cp2-tinyml/dataset/README.md`](cp2-tinyml/dataset/README.md)).
+
+**Treino no Edge Impulse:**
+- Impulse: janela de 5000ms (= 1 captura inteira), bloco Raw Data + bloco de classificação (Neural Network / Keras).
+- Acurácia na validação (treino): 100%.
+- Acurácia no conjunto de teste (dados nunca vistos pelo modelo): **71,43%** (5 de 7 acertos).
+  Os dois erros classificaram `livre`/`atencao` como `perigo` — o modelo "erra para o lado seguro"
+  (o carrinho pararia em vez de continuar andando). Causa provável: poucas amostras de `atencao`
+  e `livre` (4 cada no treino) comparado a `perigo` (18). Com mais coleta dessas duas classes,
+  a tendência é melhorar.
+- Biblioteca Arduino exportada e integrada em [`src/CameraWebServer/CameraWebServer.ino`](src/CameraWebServer/CameraWebServer.ino):
+  a inferência roda a cada ~50ms usando uma janela deslizante de 100 leituras do mesmo sensor do
+  radar de ré, e `agirComBaseNaClasse()` aciona `robot_stop()` quando classifica `perigo` — agora
+  isso vale também andando pra frente, não só na ré como a lógica simples do CP1.
+
+## Estrutura do repositório
+
+```
+lightning-mcqueen-rc/
+├── README.md
+├── src/
+│   └── CameraWebServer/
+│       ├── CameraWebServer.ino  # firmware principal (motores, WiFi, sensor, TinyML) — CP1 + CP2
+│       ├── app_httpd.cpp        # controle de motor + servidor da câmera (fornecido pelo kit LAFVIN)
+│       └── camera_index.h       # página web de controle (fornecida pelo kit LAFVIN)
+├── 3d-model/
+│   ├── carroceria_parte1_frente.stl
+│   ├── carroceria_parte2_tras.stl
+│   └── gerar_carroceria_script.py
+├── assets/
+│   ├── 01_chassi_vista_inferior.jpg
+│   ├── 02_robo_lateral_eletronica.jpg
+│   ├── 03_robo_frontal_esp32cam.jpg
+│   ├── 04_robo_traseira_sensor.jpg
+│   └── 05_carroceria_3d_preview.png
+└── cp2-tinyml/                  # CP2 — TinyML / Edge Impulse
+    ├── dataset/
+    │   ├── README.md
+    │   ├── exemplo_formato.csv
+    │   ├── livre/      (5 capturas)
+    │   ├── atencao/    (5 capturas)
+    │   └── perigo/     (25 capturas)
+    ├── coleta_dados/
+    │   └── coleta_dados.ino
+    ├── GUIA_EDGE_IMPULSE.md
+    ├── evidencias_edge_impulse/
+    ├── modelo_exportado/
+    └── esp32_inferencia/
+        └── esp32_inferencia.ino
+```
