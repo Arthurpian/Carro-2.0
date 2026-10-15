@@ -1,0 +1,48 @@
+captura # 1  classe=atencao   repr~  55.0cm  999s=  0/100  -> OK 
+captura # 2  classe=atencao   repr~  55.0cm  999s= 46/100  -> SUJA
+captura # 3  classe=livre     repr~ 999.0cm  999s=100/100  -> OK 
+captura # 4  classe=livre     repr~ 999.0cm  999s=100/100  -> OK 
+captura # 5  classe=livre     repr~ 999.0cm  999s=100/100  -> OK 
+captura # 6  classe=perigo    repr~   3.0cm  999s= 12/100  -> OK 
+captura # 7  classe=perigo    repr~  15.0cm  999s= 56/100  -> SUJA
+captura # 8  classe=perigo    repr~  16.0cm  999s=  7/100  -> SUJA
+captura # 9  classe=perigo    repr~  15.0cm  999s=  0/100  -> OK 
+captura #10  classe=perigo    repr~  16.0cm  999s=  0/100  -> OK 
+captura #11  classe=perigo    repr~   5.0cm  999s=  0/100  -> OK 
+captura #12  classe=perigo    repr~   5.0cm  999s=  0/100  -> OK 
+captura #13  classe=perigo    repr~   2.0cm  999s= 72/100  -> SUJA
+captura #14  classe=perigo    repr~   2.0cm  999s=  0/100  -> OK 
+captura #15  classe=perigo    repr~   2.0cm  999s=  0/100  -> OK 
+captura #16  classe=perigo    repr~   1.0cm  999s=  0/100  -> OK 
+captura #17  classe=livre     repr~ 999.0cm  999s= 96/100  -> OK 
+captura #18  classe=perigo    repr~   5.0cm  999s= 77/100  -> SUJA
+captura #19  classe=atencao   repr~  42.0cm  999s=  0/100  -> SUJA
+captura #20  classe=perigo    repr~   6.0cm  999s=  1/100  -> OK 
+captura #21  classe=perigo    repr~   4.0cm  999s=  0/100  -> OK 
+captura #22  classe=perigo    repr~   4.0cm  999s=  0/100  -> OK 
+captura #23  classe=perigo    repr~   4.0cm  999s=  0/100  -> OK 
+captura #24  classe=perigo    repr~   6.0cm  999s=  0/100  -> OK 
+captura #25  classe=perigo    repr~   6.0cm  999s=  0/100  -> OK 
+captura #26  classe=perigo    repr~   1.0cm  999s=  0/100  -> OK 
+captura #27  classe=atencao   repr~  55.0cm  999s=  0/100  -> OK 
+captura #28  classe=atencao   repr~  55.0cm  999s=  0/100  -> SUJA
+captura #29  classe=perigo    repr~   9.0cm  999s=  0/100  -> OK 
+captura #30  classe=perigo    repr~   9.0cm  999s=  0/100  -> OK 
+captura #31  classe=perigo    repr~   9.0cm  999s=  0/100  -> OK 
+captura #32  classe=perigo    repr~  15.0cm  999s=  0/100  -> OK 
+captura #33  classe=perigo    repr~  15.0cm  999s=  0/100  -> OK 
+captura #34  classe=perigo    repr~   1.0cm  999s=  0/100  -> OK 
+captura #35  classe=perigo    repr~   2.0cm  999s=  0/100  -> OK 
+captura #36  classe=perigo    repr~  18.0cm  999s=  0/100  -> OK 
+captura #37  classe=perigo    repr~  18.0cm  999s=  0/100  -> OK 
+captura #38  classe=atencao   repr~  21.0cm  999s=  4/100  -> SUJA
+captura #39  classe=atencao   repr~  23.0cm  999s=  0/100  -> OK 
+captura #40  classe=perigo    repr~   4.0cm  999s=  0/100  -> OK 
+captura #41  classe=atencao   repr~  27.0cm  999s=  0/100  -> OK 
+captura #42  classe=livre     repr~ 166.0cm  999s=  0/100  -> OK 
+captura #43  classe=atencao   repr~  20.0cm  999s=  0/100  -> OK 
+
+Totais de arquivos limpos gerados:
+  livre: 5
+  atencao: 5
+  perigo: 25

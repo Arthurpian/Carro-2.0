@@ -1,0 +1,5 @@
+timestamp_ms,distancia_cm
+0,12.4
+50,12.1
+100,12.6
+... (até 100 linhas = 5s de captura)
