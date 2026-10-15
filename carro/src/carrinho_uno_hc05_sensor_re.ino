@@ -30,6 +30,10 @@
 #include "esp_camera.h"
 #include <WiFi.h>
 
+// Biblioteca gerada pelo Edge Impulse (CP2 - TinyML) — exportada em
+// Deployment > Arduino library e instalada via Sketch > Include Library.
+#include <Arthurpian-project-1_inferencing.h>
+
 // Modelo da placa de câmera (AI-Thinker é o modelo usado no kit LAFVIN)
 #define CAMERA_MODEL_AI_THINKER
 
@@ -109,16 +113,86 @@ long medirDistancia() {
 }
 
 // =====================================
+// INFERÊNCIA TinyML (CP2 - Edge Impulse) — adição nossa
+// =====================================
+// Reaproveita o mesmo sensor/medirDistancia() do radar de ré (CP1).
+// Mantém uma janela deslizante de leituras e roda o modelo treinado
+// no Edge Impulse pra classificar a distância em livre/atencao/perigo,
+// agindo no carrinho mesmo quando ele está indo PRA FRENTE (diferença
+// em relação ao radar de ré do CP1, que só agia na marcha à ré).
+
+static float features[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE];
+static size_t amostrasColetadas = 0;
+unsigned long ultimaLeituraInferenciaMs = 0;
+const unsigned long INTERVALO_INFERENCIA_MS = 50; // 20Hz, igual ao usado na coleta de dados
+
+// Desloca o buffer (janela deslizante) e insere a leitura mais nova no final.
+void empurrarLeituraNoBuffer(float valor) {
+  for (size_t i = 1; i < EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE; i++) {
+    features[i - 1] = features[i];
+  }
+  features[EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE - 1] = valor;
+  if (amostrasColetadas < EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) amostrasColetadas++;
+}
+
+// Aplica no carrinho o resultado da classificação -- é aqui que a
+// inferência do CP2 "age de verdade" no robô.
+void agirComBaseNaClasse(const char* classe, float confianca) {
+  if (strcmp(classe, "perigo") == 0) {
+    robot_stop(); // obstáculo muito perto -> para, mesmo indo pra frente
+    // TODO: acionar LED/buzzer de alerta aqui, se tiver
+  } else if (strcmp(classe, "atencao") == 0) {
+    // TODO: reduzir velocidade (ajustar PWM/duty cycle dos pinos
+    // ENA/ENB do L298N, se o kit expuser isso)
+  } else { // "livre"
+    // segue normal -- nenhuma ação extra necessária
+  }
+}
+
+// Roda a inferência quando o buffer já tiver amostras suficientes.
+// Chamada a cada ciclo do loop() principal.
+void rodarInferenciaSeNecessario() {
+  if (millis() - ultimaLeituraInferenciaMs < INTERVALO_INFERENCIA_MS) return;
+  ultimaLeituraInferenciaMs = millis();
+
+  float d = medirDistancia();
+  empurrarLeituraNoBuffer(d);
+
+  if (amostrasColetadas < EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) return; // ainda enchendo a janela
+
+  signal_t signal;
+  int err = numpy::signal_from_buffer(features, EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE, &signal);
+  if (err != 0) return;
+
+  ei_impulse_result_t result = { 0 };
+  EI_IMPULSE_ERROR res = run_classifier(&signal, &result, false /* debug */);
+  if (res != EI_IMPULSE_OK) return;
+
+  // Acha a classe com maior probabilidade
+  float melhorProb = 0;
+  const char* melhorClasse = "";
+  for (size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++) {
+    if (result.classification[i].value > melhorProb) {
+      melhorProb = result.classification[i].value;
+      melhorClasse = result.classification[i].label;
+    }
+  }
+
+  agirComBaseNaClasse(melhorClasse, melhorProb);
+
+  // IMPORTANTE: nunca imprimir aqui enquanto o sensor estiver sendo
+  // lido — mesmo motivo do radar de ré: Serial e sensor dividem os
+  // pinos U0T/U0R.
+  // Serial.printf("Classe: %s (%.2f)\n", melhorClasse, melhorProb);
+}
+
+// =====================================
 // setup()
 // =====================================
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
-
-  // Pinos do sensor de ré
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
 
   // Pinos do driver, usados aqui só para LEITURA (checar se está
   // em marcha à ré) — quem manda neles de verdade é robot_setup()/
@@ -153,21 +227,30 @@ void setup() {
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
 
-  // Se a placa tiver PSRAM (é o caso da AI-Thinker), usa qualidade
-  // maior; senão cai pra uma resolução menor pra não faltar memória.
+  // ATUALIZAÇÃO 2: o SVGA ainda estava dando "frame buffer malloc
+  // failed" mesmo em fb_count=1 -- ou seja, nem SVGA cabe na RAM
+  // interna disponível (sem PSRAM confiável nesta sessão). Como o
+  // stream ao vivo já é reduzido pra QVGA logo depois do init (ver
+  // s->set_framesize abaixo), não tem motivo pra iniciar em algo
+  // maior que QVGA -- inicializamos direto no tamanho final, que é
+  // uma alocação muito menor e tem bem mais chance de caber na RAM
+  // interna mesmo sem PSRAM.
+  config.frame_size = FRAMESIZE_QVGA;
+  config.jpeg_quality = 12;
+  config.fb_count = 1;
+
+  // Diagnóstico: imprime a RAM livre ANTES do init da câmera, pra
+  // sabermos se o problema é mesmo falta de memória (e quanto falta),
+  // caso o init ainda falhe mesmo em QVGA.
+  Serial.printf("RAM livre (heap interno): %u bytes\n", (unsigned)ESP.getFreeHeap());
+  Serial.printf("PSRAM encontrada: %s\n", psramFound() ? "sim" : "nao");
   if (psramFound()) {
-    config.frame_size = FRAMESIZE_UXGA;
-    config.jpeg_quality = 10;
-    config.fb_count = 2;
-  } else {
-    config.frame_size = FRAMESIZE_SVGA;
-    config.jpeg_quality = 12;
-    config.fb_count = 1;
+    Serial.printf("RAM livre (PSRAM): %u bytes\n", (unsigned)ESP.getFreePsram());
   }
 
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
+    Serial.printf("Camera init failed with error 0x%x\n", err);
     return;
   }
 
@@ -189,6 +272,14 @@ void setup() {
 
   startCameraServer(); // sobe o servidor HTTP (stream + comandos de controle)
   digitalWrite(33, LOW);
+
+  // Pinos do sensor de ré/TinyML — movidos pro final do setup() de
+  // propósito: GPIO1/GPIO3 (TRIG/ECHO) são os mesmos pinos da Serial
+  // (U0T/U0R), e configurá-los como pinMode() "rouba" a função de
+  // Serial do ESP32 pro resto do boot. Fazendo isso por último, os
+  // prints acima (câmera, IP do WiFi) conseguem sair certinho antes.
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
 }
 
 // =====================================
@@ -220,6 +311,11 @@ void loop() {
       // loop principal quando o carrinho está em marcha à ré.
     }
   }
+
+  // 4) CP2 - TinyML: classifica a distância (livre/atencao/perigo) e
+  //    age no carrinho mesmo quando ele está indo pra frente, não só
+  //    na ré como o radar simples do CP1.
+  rodarInferenciaSeNecessario();
 
   delay(30); // pequena pausa entre leituras (~33 verificações por segundo)
 }
