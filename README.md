@@ -16,6 +16,7 @@ João Victor - RM551410
 - [Testes e resultados](#testes-e-resultados)
 - [Evidências finais](#evidências-finais)
 - [Estrutura do repositório](#estrutura-do-repositório)
+- [Video](#estrutura-do-repositório)
 
 ## Hardware usado
 
@@ -144,5 +145,10 @@ lightning-mcqueen-rc/
     ├── evidencias_edge_impulse/
     ├── modelo_exportado/
     └── esp32_inferencia/
+
+##Video
+
+https://youtube.com/shorts/OZpYgDvISJg?is=4Yd3xh_QkL5NIwOe
+https://youtube.com/shorts/OZpYgDvISJg?is=USphgEV9JgbOKfyQ
         └── esp32_inferencia.ino
 ```
