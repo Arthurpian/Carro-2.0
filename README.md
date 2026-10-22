@@ -145,10 +145,10 @@ lightning-mcqueen-rc/
     ├── evidencias_edge_impulse/
     ├── modelo_exportado/
     └── esp32_inferencia/
+        └── esp32_inferencia.ino
+```
 
 ##Video
 
 https://youtube.com/shorts/OZpYgDvISJg?is=4Yd3xh_QkL5NIwOe
 https://youtube.com/shorts/OZpYgDvISJg?is=USphgEV9JgbOKfyQ
-        └── esp32_inferencia.ino
-```
